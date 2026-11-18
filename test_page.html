@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Image API</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--fg:#1b1f24;--muted:#5f6b7a;--line:#d9dee5;--acc:#2563eb;--err:#b42318;--chip:#eef2f7}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1115;--card:#171a21;--fg:#e6e9ee;--muted:#9aa4b2;--line:#2a2f3a;--acc:#6ea0ff;--err:#ff8a80;--chip:#20252f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif}
+main{max-width:860px;margin:0 auto;padding:24px 16px}h1{font-size:20px;margin:0 0 4px}.sub{color:var(--muted);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+textarea,input,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);font:inherit}
+input[type=range]{padding:0}textarea{min-height:96px;resize:vertical}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
+.tab{margin:0;padding:8px 12px;border:1px solid var(--line);border-radius:6px;background:var(--chip);color:var(--fg);font-weight:500}
+.tab[aria-selected=true]{background:var(--acc);border-color:var(--acc);color:#fff}
+.tab:disabled{opacity:.45;cursor:not-allowed}
+.hint{color:var(--muted);font-size:13px;margin:8px 0 0}
+button{margin-top:14px;padding:10px 18px;border:0;border-radius:6px;background:var(--acc);color:#fff;font:inherit;font-weight:600;cursor:pointer}
+button:disabled{opacity:.6;cursor:wait}.hide{display:none}#status{margin-top:10px;color:var(--muted)}#status.err{color:var(--err)}
+.thumbs{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}.thumbs img{height:90px;border-radius:6px;border:1px solid var(--line)}
+#result img{width:100%;border-radius:8px;margin-top:12px;display:block}
+.meta{font-size:13px;color:var(--muted);margin-top:6px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.history{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.history img{width:100%;border-radius:6px;cursor:pointer;border:1px solid var(--line)}
+a{color:var(--acc)}
+</style></head><body><main>
+<h1>Image API</h1>
+<p class="sub">Trang thử API sinh ảnh. Tài liệu API: <a href="/docs">/docs</a> · Ảnh không lưu trên server.</p>
+
+<div class="card">
+  <div class="tabs" role="tablist">
+    <button class="tab" data-mode="generate" aria-selected="true">Tạo từ prompt</button>
+    <button class="tab" data-mode="img2img" aria-selected="false">Biến thể từ ảnh</button>
+    <button class="tab" data-mode="edit" aria-selected="false">Sửa ảnh bằng lời</button>
+    <button class="tab" data-mode="control" aria-selected="false">Giữ bố cục / dáng</button>
+  </div>
+  <p class="hint" id="modeHint"></p>
+
+  <div data-for="img2img edit control">
+    <label for="image">Ảnh mẫu</label><input id="image" type="file" accept="image/*">
+  </div>
+  <div data-for="edit">
+    <label for="image2">Ảnh tham chiếu thứ hai (tuỳ chọn, ví dụ nhân vật cần đưa vào cảnh)</label><input id="image2" type="file" accept="image/*">
+  </div>
+  <div class="thumbs" id="thumbs"></div>
+
+  <label for="prompt" id="promptLabel">Prompt</label>
+  <textarea id="prompt">cinematic shot of a lone samurai standing in heavy rain on a neon-lit Tokyo street at night, reflections on wet asphalt, 35mm film</textarea>
+  <p class="hint">Viết tiếng Anh cho kết quả tốt nhất. Tiếng Việt vẫn hiểu nhưng kém chính xác hơn.</p>
+
+  <div class="row">
+    <div data-for="generate"><label for="size">Kích thước</label><select id="size">
+      <option value="1344x768">1344 × 768 (ngang 16:9)</option><option value="768x1344">768 × 1344 (dọc 9:16)</option>
+      <option value="1024x1024">1024 × 1024 (vuông)</option><option value="1536x864">1536 × 864 (ngang lớn)</option>
+      <option value="864x1536">864 × 1536 (dọc lớn)</option></select></div>
+    <div data-for="img2img edit control"><label for="mp">Kích thước ảnh ra (megapixel, giữ tỉ lệ ảnh mẫu)</label>
+      <select id="mp"><option value="0.5">0,5 MP (nhanh)</option><option value="1" selected>1 MP</option><option value="1.5">1,5 MP</option><option value="2">2 MP</option></select></div>
+    <div data-for="img2img"><label for="strength">Mức thay đổi: <span id="strengthOut">0.6</span></label>
+      <input id="strength" type="range" min="0.05" max="1" step="0.05" value="0.6"></div>
+    <div data-for="edit"><label for="guidance">Guidance: <span id="guidanceOut">2.5</span></label>
+      <input id="guidance" type="range" min="1" max="6" step="0.1" value="2.5"></div>
+    <div data-for="control"><label for="cmode">Kiểu ảnh mẫu</label><select id="cmode">
+      <option value="canny">Ảnh thường (tự tách đường nét)</option>
+      <option value="direct">Ảnh điều khiển có sẵn (pose, depth, lineart)</option></select></div>
+    <div data-for="control"><label for="cstrength">Độ bám bố cục: <span id="cstrengthOut">0.9</span></label>
+      <input id="cstrength" type="range" min="0.3" max="1.5" step="0.05" value="0.9"></div>
+    <div><label for="steps">Số bước</label><input id="steps" type="number" min="1" max="50"></div>
+    <div><label for="seed">Seed (-1 = ngẫu nhiên)</label><input id="seed" type="number" value="-1"></div>
+  </div>
+
+  <label for="key">API key</label><input id="key" type="password" autocomplete="off">
+  <button id="go">Tạo ảnh</button><div id="status"></div>
+  <div id="result"></div>
+</div>
+
+<div class="card hide" id="historyCard">
+  <h2 style="font-size:16px;margin:0 0 10px">Ảnh đã tạo trong phiên này</h2>
+  <div class="history" id="history"></div>
+  <p class="hint">Chỉ lưu tạm trong trình duyệt, tải lại trang là mất.</p>
+</div>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const store={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
+const MODES={
+  generate:{steps:8,label:'Prompt',hint:'Tạo ảnh mới hoàn toàn từ mô tả. Khoảng 12 giây một ảnh.',btn:'Tạo ảnh'},
+  img2img:{steps:8,label:'Prompt (mô tả ảnh muốn ra)',hint:'Giữ bố cục và màu của ảnh mẫu, vẽ lại theo prompt. Mức thay đổi thấp giữ gần nguyên, cao thì vẽ lại nhiều.',btn:'Tạo biến thể'},
+  edit:{steps:20,label:'Câu lệnh sửa (tiếng Anh)',hint:'Giữ nguyên nhân vật/vật thể, chỉ đổi phần bạn yêu cầu. Ví dụ: "change the background to a beach at sunset". Khoảng 30–90 giây.',btn:'Sửa ảnh',sample:'change the background to a beach at sunset, keep the person exactly the same'},
+  control:{steps:8,label:'Prompt (nội dung mới)',hint:'Giữ đường nét, tư thế hoặc bố cục của ảnh mẫu, còn nội dung vẽ mới theo prompt.',btn:'Tạo ảnh'},
+};
+let mode='generate',features={};
+$('key').value=store.get('imagegen_key')||'';
+$('key').onchange=()=>{store.set('imagegen_key',$('key').value.trim())};
+const hdr=()=>{const k=$('key').value.trim();return k?{'X-API-Key':k}:{}};
+function setStatus(t,err){$('status').textContent=t;$('status').className=err?'err':''}
+for(const id of ['strength','guidance','cstrength'])$(id).oninput=()=>{$(id+'Out').textContent=$(id).value};
+
+function setMode(m){
+  mode=m;const cfg=MODES[m];
+  document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.mode===m));
+  document.querySelectorAll('[data-for]').forEach(el=>el.classList.toggle('hide',!el.dataset.for.split(' ').includes(m)));
+  $('steps').value=cfg.steps;$('promptLabel').textContent=cfg.label;$('go').textContent=cfg.btn;
+  $('modeHint').textContent=cfg.hint+(features[m]===false?' (Chưa cài model cho chức năng này trên server.)':'');
+  if(cfg.sample&&!$('prompt').dataset.touched)$('prompt').value=cfg.sample;
+  showThumbs();
+}
+$('prompt').oninput=()=>{$('prompt').dataset.touched='1'};
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>setMode(t.dataset.mode));
+
+function showThumbs(){
+  const files=[];if(mode!=='generate'&&$('image').files[0])files.push($('image').files[0]);
+  if(mode==='edit'&&$('image2').files[0])files.push($('image2').files[0]);
+  $('thumbs').innerHTML='';for(const f of files){const i=new Image();i.src=URL.createObjectURL(f);i.alt=f.name;$('thumbs').appendChild(i)}
+}
+$('image').onchange=showThumbs;$('image2').onchange=showThumbs;
+
+async function errText(r){let m=await r.text();try{const d=JSON.parse(m).detail;m=typeof d==='string'?d:JSON.stringify(d)}catch(e){}
+  if(r.status===401)m='Sai hoặc thiếu API key';return `HTTP ${r.status}: ${m}`}
+
+function buildRequest(){
+  const seed=$('seed').value||'-1',steps=$('steps').value;
+  if(mode==='generate'){
+    const [w,h]=$('size').value.split('x').map(Number);
+    return {url:'/generate',opts:{method:'POST',headers:{...hdr(),'Content-Type':'application/json'},
+      body:JSON.stringify({prompt:$('prompt').value,width:w,height:h,steps:+steps,seed:+seed,wait:false})}};
+  }
+  if(!$('image').files[0])throw new Error('Chọn ảnh mẫu trước');
+  const f=new FormData();f.append('image',$('image').files[0]);f.append('prompt',$('prompt').value);
+  f.append('steps',steps);f.append('seed',seed);f.append('megapixels',$('mp').value);f.append('wait','false');
+  if(mode==='img2img')f.append('strength',$('strength').value);
+  if(mode==='edit'){f.append('guidance',$('guidance').value);if($('image2').files[0])f.append('image2',$('image2').files[0])}
+  if(mode==='control'){f.append('mode',$('cmode').value);f.append('strength',$('cstrength').value)}
+  return {url:'/'+mode,opts:{method:'POST',headers:hdr(),body:f}};
+}
+
+$('go').onclick=async()=>{
+  let req;try{req=buildRequest()}catch(e){setStatus(e.message,true);return}
+  $('go').disabled=true;const t0=performance.now();const tick=()=>((performance.now()-t0)/1000).toFixed(0);
+  setStatus('Đang gửi…');
+  try{
+    const r=await fetch(req.url,req.opts);
+    if(r.status!==202)throw new Error(await errText(r));
+    const job=await r.json();
+    let res;
+    while(true){
+      await new Promise(ok=>setTimeout(ok,1000));
+      res=await fetch('/jobs/'+job.job_id,{headers:hdr()});
+      if(res.status===202){setStatus(`Đang tạo… ${tick()} giây`);continue}
+      if(!res.ok)throw new Error(await errText(res));
+      break;
+    }
+    const url=URL.createObjectURL(await res.blob());
+    const seed=res.headers.get('X-Seed'),gpu=res.headers.get('X-Elapsed-S');
+    $('result').innerHTML=`<img src="${url}" alt="Ảnh kết quả"><div class="meta">seed ${seed} · GPU ${(+gpu).toFixed(1)} s · tổng ${tick()} s · <a href="${url}" download="${mode}-${seed}.png">Tải PNG</a> · <a href="#" id="reuse">Dùng lại seed này</a></div>`;
+    $('reuse').onclick=e=>{e.preventDefault();$('seed').value=seed};
+    addHistory(url,seed);setStatus(`Xong sau ${tick()} giây`);
+  }catch(e){setStatus('Lỗi: '+e.message,true)}finally{$('go').disabled=false}
+};
+
+function addHistory(url,seed){
+  $('historyCard').classList.remove('hide');
+  const i=new Image();i.src=url;i.alt='seed '+seed;i.title=`${mode} · seed ${seed}`;
+  i.onclick=()=>{$('result').querySelector('img').src=url;window.scrollTo({top:0,behavior:'smooth'})};
+  $('history').prepend(i);
+}
+
+fetch('/health').then(r=>r.json()).then(d=>{
+  features=d.features||{};
+  document.querySelectorAll('.tab').forEach(t=>{if(features[t.dataset.mode]===false){t.disabled=true;t.title='Chưa cài model trên server'}});
+  setMode(mode);
+}).catch(()=>setMode(mode));
+setMode(mode);
+</script></body></html>
