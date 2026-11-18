@@ -234,13 +234,14 @@ async def _run_prompt(client: httpx.AsyncClient, workflow: dict) -> bytes:
             images = hist.get("outputs", {}).get(OUTPUT_NODE, {}).get("images", [])
             if images:
                 img = images[0]
+                kind = img.get("type", "output")
                 view = await client.get("/view", params={
-                    "filename": img["filename"], "subfolder": img.get("subfolder", ""),
-                    "type": img.get("type", "temp")})
-                view.raise_for_status()
-                if img.get("type") == "temp":
-                    _remove_quietly(COMFY_DIR / "temp" / img.get("subfolder", "") / img["filename"],
-                                    COMFY_DIR / "temp")
+                    "filename": img["filename"], "subfolder": img.get("subfolder", ""), "type": kind})
+                if view.status_code != 200:
+                    print(f">> /view {view.status_code} for {img}", flush=True)
+                    raise HTTPException(500, "Image generation finished but the image could not be read; retry")
+                if kind in ("temp", "output"):
+                    _remove_quietly(COMFY_DIR / kind / img.get("subfolder", "") / img["filename"], COMFY_DIR / kind)
                 return view.content
             if status.get("completed"):
                 raise HTTPException(500, "ComfyUI finished but returned no image")
@@ -266,8 +267,12 @@ async def execute(build: Callable[..., dict], seeds: list[int], images: list[Ima
                     job = CURRENT_JOB.get()
                     if job is not None:
                         job["done_images"] = len(results)
+            except httpx.TransportError as e:
+                print(f">> backend unreachable: {e!r}", flush=True)
+                raise HTTPException(503, "Image backend is not reachable; retry in a minute")
             except httpx.HTTPError as e:
-                raise HTTPException(503, f"Image backend is not reachable: {e}")
+                print(f">> backend error: {e!r}", flush=True)
+                raise HTTPException(500, "Image backend returned an error; retry")
     finally:
         for name in names:
             _remove_quietly(COMFY_DIR / "input" / name, COMFY_DIR / "input")
@@ -323,7 +328,11 @@ def _sample(wf: dict, node: str, latent, seed: int, steps: int, cfg: float, samp
 
 def _decode_and_output(wf: dict, samples_node: str, decode_node: str = "9"):
     wf[decode_node] = {"class_type": "VAEDecode", "inputs": {"samples": [samples_node, 0], "vae": ["3", 0]}}
-    wf[OUTPUT_NODE] = {"class_type": "PreviewImage", "inputs": {"images": [decode_node, 0]}}
+    # A unique prefix makes the save node run every time. With a fixed output node, ComfyUI's
+    # cache answers a repeated request with the earlier file name, which we have already deleted.
+    # Upstream nodes stay cached, so a repeat (e.g. same seed, other format) costs no GPU time.
+    wf[OUTPUT_NODE] = {"class_type": "SaveImage",
+                       "inputs": {"images": [decode_node, 0], "filename_prefix": f"api/{uuid.uuid4().hex}"}}
 
 
 def wf_generate(p: dict, seed: int) -> dict:
