@@ -1,0 +1,8 @@
+ComfyUI/
+.venv/
+logs/
+outputs/
+frames/
+.env
+__pycache__/
+*.part
