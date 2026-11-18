@@ -123,6 +123,24 @@ def _cleanup_temp(img: dict):
         pass
 
 
+@app.on_event("startup")
+async def _schedule_warmup():
+    # Load the models into memory before the first real request. Behind Cloudflare
+    # a cold first request can exceed the 100 s proxy timeout.
+    if os.environ.get("WARMUP", "1") == "1":
+        asyncio.create_task(_warmup())
+
+
+async def _warmup():
+    started = time.monotonic()
+    try:
+        req = GenerateRequest(prompt="a simple test image", width=256, height=256, steps=1)
+        await run_workflow(build_workflow(req, seed=0))
+        print(f">> Warm-up done in {time.monotonic() - started:.0f}s, models are loaded", flush=True)
+    except Exception as e:
+        print(f">> Warm-up failed: {getattr(e, 'detail', e)}", flush=True)
+
+
 @app.get("/health")
 async def health():
     try:

@@ -101,7 +101,10 @@ python client_example.py --url http://SERVER:8000 --key KEY_CUA_BAN --prompts pr
 
 ## Lưu ý
 
-- **Lần gọi đầu tiên chậm** (30-90 giây) vì phải nạp model vào GPU. Các lần sau khoảng vài giây mỗi ảnh.
+- Khi khởi động, server tự **làm nóng** (sinh một ảnh nhỏ để nạp model, 30-90 giây). Đợi log in
+  `Warm-up done` rồi hãy gọi. Tắt bằng `WARMUP=0` trong `.env`.
+- Nếu đặt sau Cloudflare Tunnel: chỉ cần `HOST=127.0.0.1`, không phải mở cổng firewall.
+  Cloudflare cắt request quá 100 giây, nên đừng gọi khi model chưa nạp xong.
 - Request được xếp hàng và xử lý lần lượt trên GPU.
 - Thiếu VRAM/RAM: đặt `TEXT_ENCODER_NAME=qwen_3_4b_fp8_mixed.safetensors` trong `.env`, chạy lại
   `bash download_models.sh`, hoặc thêm `COMFY_ARGS=--lowvram`.
