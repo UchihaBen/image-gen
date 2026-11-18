@@ -1,0 +1,27 @@
+# systemd unit: chạy image-gen như một dịch vụ, tự khởi động lại khi chết và khi máy khởi động.
+#
+# Cài (sửa User và đường dẫn nếu khác):
+#   sudo cp image-gen.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now image-gen
+# Xem log:   journalctl -u image-gen -f
+# Khởi động lại sau khi git pull:   sudo systemctl restart image-gen
+
+[Unit]
+Description=Image generation API (ComfyUI + FastAPI)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=saokhue
+WorkingDirectory=/home/saokhue/image-gen
+Environment=PATH=/home/saokhue/.local/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=/bin/bash /home/saokhue/image-gen/start.sh
+Restart=always
+RestartSec=10
+KillMode=mixed
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

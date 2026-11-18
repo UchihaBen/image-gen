@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-# Start ComfyUI (localhost only) + the public API server. Ctrl+C stops both.
+# Start ComfyUI (localhost only) + the API server.
+# If either process dies, the other is stopped and the script exits non-zero, so a
+# supervisor (systemd, see image-gen.service) can restart the whole service.
 set -euo pipefail
 cd "$(dirname "$0")"
 set -a; [ -f .env ] && . ./.env; set +a
@@ -13,11 +15,13 @@ if [ -z "${API_KEY:-}" ] && [ "$HOST" != "127.0.0.1" ] && [ "$HOST" != "localhos
 fi
 
 mkdir -p logs
-echo ">> Khởi động ComfyUI trên 127.0.0.1:$COMFY_PORT (log: logs/comfyui.log)"
+echo ">> $(date '+%F %T') Khởi động ComfyUI trên 127.0.0.1:$COMFY_PORT (log: logs/comfyui.log)"
 .venv/bin/python ComfyUI/main.py --listen 127.0.0.1 --port "$COMFY_PORT" \
-  --disable-auto-launch ${COMFY_ARGS:-} > logs/comfyui.log 2>&1 &
+  --disable-auto-launch ${COMFY_ARGS:-} >> logs/comfyui.log 2>&1 &
 COMFY_PID=$!
-trap 'kill $COMFY_PID 2>/dev/null || true' EXIT INT TERM
+API_PID=""
+cleanup() { kill $COMFY_PID ${API_PID:-} 2>/dev/null || true; wait 2>/dev/null || true; }
+trap cleanup EXIT INT TERM
 
 for _ in $(seq 1 180); do
   curl -sf "http://127.0.0.1:$COMFY_PORT/system_stats" >/dev/null && break
@@ -28,5 +32,17 @@ for _ in $(seq 1 180); do
 done
 
 export COMFY_URL="http://127.0.0.1:$COMFY_PORT" HOST PORT
-echo ">> API server: http://$HOST:$PORT  (tài liệu: /docs)"
-.venv/bin/python api_server.py
+echo ">> API server: http://$HOST:$PORT  (trang thử: /, tài liệu: /docs)"
+.venv/bin/python api_server.py &
+API_PID=$!
+
+set +e
+wait -n "$COMFY_PID" "$API_PID"
+code=$?
+set -e
+if ! kill -0 "$COMFY_PID" 2>/dev/null; then
+  echo ">> $(date '+%F %T') ComfyUI đã dừng (mã $code). 40 dòng log cuối:"; tail -n 40 logs/comfyui.log
+else
+  echo ">> $(date '+%F %T') API server đã dừng (mã $code)."
+fi
+exit 1

@@ -5,21 +5,24 @@
 :root{--bg:#f6f7f9;--card:#fff;--fg:#1b1f24;--muted:#5f6b7a;--line:#d9dee5;--acc:#2563eb;--err:#b42318;--chip:#eef2f7}
 @media (prefers-color-scheme:dark){:root{--bg:#0f1115;--card:#171a21;--fg:#e6e9ee;--muted:#9aa4b2;--line:#2a2f3a;--acc:#6ea0ff;--err:#ff8a80;--chip:#20252f}}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif}
-main{max-width:860px;margin:0 auto;padding:24px 16px}h1{font-size:20px;margin:0 0 4px}.sub{color:var(--muted);margin:0 0 20px}
+main{max-width:900px;margin:0 auto;padding:24px 16px}h1{font-size:20px;margin:0 0 4px}.sub{color:var(--muted);margin:0 0 20px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
 label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
 textarea,input,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);font:inherit}
-input[type=range]{padding:0}textarea{min-height:96px;resize:vertical}
-.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+input[type=range]{padding:0}input[type=checkbox]{width:auto;margin-right:6px}textarea{min-height:96px;resize:vertical}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0 12px}
 .tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
 .tab{margin:0;padding:8px 12px;border:1px solid var(--line);border-radius:6px;background:var(--chip);color:var(--fg);font-weight:500}
 .tab[aria-selected=true]{background:var(--acc);border-color:var(--acc);color:#fff}
 .tab:disabled{opacity:.45;cursor:not-allowed}
 .hint{color:var(--muted);font-size:13px;margin:8px 0 0}
+details{margin-top:12px}summary{cursor:pointer;color:var(--muted);font-size:14px}
+.check{display:flex;align-items:center;margin:34px 0 0;color:var(--fg);font-size:14px}
 button{margin-top:14px;padding:10px 18px;border:0;border-radius:6px;background:var(--acc);color:#fff;font:inherit;font-weight:600;cursor:pointer}
-button:disabled{opacity:.6;cursor:wait}.hide{display:none}#status{margin-top:10px;color:var(--muted)}#status.err{color:var(--err)}
+button:disabled{opacity:.6;cursor:wait}.hide{display:none!important}#status{margin-top:10px;color:var(--muted)}#status.err{color:var(--err)}
 .thumbs{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}.thumbs img{height:90px;border-radius:6px;border:1px solid var(--line)}
-#result img{width:100%;border-radius:8px;margin-top:12px;display:block}
+.results{display:grid;gap:14px;margin-top:12px}.results.multi{grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr))}
+.results figure{margin:0}.results img{width:100%;border-radius:8px;display:block}
 .meta{font-size:13px;color:var(--muted);margin-top:6px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .history{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
 .history img{width:100%;border-radius:6px;cursor:pointer;border:1px solid var(--line)}
@@ -47,15 +50,16 @@ a{color:var(--acc)}
 
   <label for="prompt" id="promptLabel">Prompt</label>
   <textarea id="prompt">cinematic shot of a lone samurai standing in heavy rain on a neon-lit Tokyo street at night, reflections on wet asphalt, 35mm film</textarea>
-  <p class="hint">Viết tiếng Anh cho kết quả tốt nhất. Tiếng Việt vẫn hiểu nhưng kém chính xác hơn.</p>
+  <p class="hint">Viết tiếng Anh, ghi phong cách ở đầu prompt. Không nhắc tới chữ hay bảng hiệu, kể cả để cấm.</p>
 
   <div class="row">
-    <div data-for="generate"><label for="size">Kích thước</label><select id="size">
-      <option value="1344x768">1344 × 768 (ngang 16:9)</option><option value="768x1344">768 × 1344 (dọc 9:16)</option>
-      <option value="1024x1024">1024 × 1024 (vuông)</option><option value="1536x864">1536 × 864 (ngang lớn)</option>
-      <option value="864x1536">864 × 1536 (dọc lớn)</option></select></div>
-    <div data-for="img2img edit control"><label for="mp">Kích thước ảnh ra (megapixel, giữ tỉ lệ ảnh mẫu)</label>
-      <select id="mp"><option value="0.5">0,5 MP (nhanh)</option><option value="1" selected>1 MP</option><option value="1.5">1,5 MP</option><option value="2">2 MP</option></select></div>
+    <div data-for="generate img2img control"><label for="size">Kích thước ảnh ra</label><select id="size">
+      <option value="auto" data-for="img2img control">Theo ảnh mẫu</option>
+      <option value="1920x1080">1920 × 1080 (video ngang)</option><option value="1080x1920">1080 × 1920 (video dọc)</option>
+      <option value="1344x768">1344 × 768 (ngang, nhanh)</option><option value="768x1344">768 × 1344 (dọc, nhanh)</option>
+      <option value="1024x1024">1024 × 1024 (vuông)</option></select></div>
+    <div data-for="edit img2img control" id="mpBox"><label for="mp">Megapixel (khi theo ảnh mẫu)</label>
+      <select id="mp"><option value="0.5">0,5 MP</option><option value="1" selected>1 MP</option><option value="1.5">1,5 MP</option><option value="2">2 MP</option></select></div>
     <div data-for="img2img"><label for="strength">Mức thay đổi: <span id="strengthOut">0.6</span></label>
       <input id="strength" type="range" min="0.05" max="1" step="0.05" value="0.6"></div>
     <div data-for="edit"><label for="guidance">Guidance: <span id="guidanceOut">2.5</span></label>
@@ -65,13 +69,27 @@ a{color:var(--acc)}
       <option value="direct">Ảnh điều khiển có sẵn (pose, depth, lineart)</option></select></div>
     <div data-for="control"><label for="cstrength">Độ bám bố cục: <span id="cstrengthOut">0.9</span></label>
       <input id="cstrength" type="range" min="0.3" max="1.5" step="0.05" value="0.9"></div>
-    <div><label for="steps">Số bước</label><input id="steps" type="number" min="1" max="50"></div>
+    <div><label for="n">Số ảnh (mỗi ảnh một seed)</label><select id="n"><option>1</option><option>2</option><option>3</option><option>4</option></select></div>
     <div><label for="seed">Seed (-1 = ngẫu nhiên)</label><input id="seed" type="number" value="-1"></div>
   </div>
 
+  <details>
+    <summary>Tuỳ chọn nâng cao</summary>
+    <div class="row">
+      <div data-for="generate img2img control"><label for="lora">LoRA phong cách</label><select id="lora"><option value="">Không dùng</option></select></div>
+      <div data-for="generate img2img control"><label for="loraStrength">Độ mạnh LoRA: <span id="loraStrengthOut">0.8</span></label>
+        <input id="loraStrength" type="range" min="0" max="1.5" step="0.05" value="0.8"></div>
+      <div data-for="generate"><label class="check"><input id="hires" type="checkbox">Gen 2 lượt (hires)</label></div>
+      <div><label for="format">Định dạng</label><select id="format"><option value="png">PNG</option><option value="jpeg">JPEG</option><option value="webp" selected>WebP</option></select></div>
+      <div><label for="steps">Số bước</label><input id="steps" type="number" min="1" max="50"></div>
+      <div data-for="generate img2img control"><label for="cfg">CFG (lớn hơn 1 mới dùng prompt phủ định)</label><input id="cfg" type="number" min="1" max="10" step="0.1" value="1"></div>
+    </div>
+    <div data-for="generate img2img control"><label for="neg">Prompt phủ định (thử nghiệm, cần CFG &gt; 1, chậm gấp đôi)</label><input id="neg" placeholder="watermark, blurry"></div>
+  </details>
+
   <label for="key">API key</label><input id="key" type="password" autocomplete="off">
   <button id="go">Tạo ảnh</button><div id="status"></div>
-  <div id="result"></div>
+  <div class="results" id="result"></div>
 </div>
 
 <div class="card hide" id="historyCard">
@@ -84,27 +102,32 @@ a{color:var(--acc)}
 const $=id=>document.getElementById(id);
 const store={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}}};
 const MODES={
-  generate:{steps:8,label:'Prompt',hint:'Tạo ảnh mới hoàn toàn từ mô tả. Khoảng 12 giây một ảnh.',btn:'Tạo ảnh'},
-  img2img:{steps:8,label:'Prompt (mô tả ảnh muốn ra)',hint:'Giữ bố cục và màu của ảnh mẫu, vẽ lại theo prompt. Mức thay đổi thấp giữ gần nguyên, cao thì vẽ lại nhiều.',btn:'Tạo biến thể'},
-  edit:{steps:20,label:'Câu lệnh sửa (tiếng Anh)',hint:'Giữ nguyên nhân vật/vật thể, chỉ đổi phần bạn yêu cầu. Ví dụ: "change the background to a beach at sunset". Khoảng 30–90 giây.',btn:'Sửa ảnh',sample:'change the background to a beach at sunset, keep the person exactly the same'},
-  control:{steps:8,label:'Prompt (nội dung mới)',hint:'Giữ đường nét, tư thế hoặc bố cục của ảnh mẫu, còn nội dung vẽ mới theo prompt.',btn:'Tạo ảnh'},
+  generate:{steps:8,label:'Prompt',hint:'Tạo ảnh mới hoàn toàn từ mô tả. Khoảng 12 giây (1344×768) đến 22 giây (1920×1080) một ảnh.',btn:'Tạo ảnh'},
+  img2img:{steps:8,label:'Prompt (mô tả đủ mọi người và vật cần giữ)',hint:'Giữ bố cục và màu của ảnh mẫu, vẽ lại theo prompt. Người hay vật không có trong prompt có thể bị biến thành thứ khác.',btn:'Tạo biến thể'},
+  edit:{steps:20,label:'Câu lệnh sửa (tiếng Anh)',hint:'Giữ nguyên nhân vật/vật thể, chỉ đổi phần bạn yêu cầu. Ví dụ: "change the background to a beach at sunset".',btn:'Sửa ảnh',sample:'change the background to a beach at sunset, keep the person exactly the same'},
+  control:{steps:8,label:'Prompt (nội dung mới, mô tả đủ các chủ thể)',hint:'Giữ đường nét, tư thế hoặc bố cục của ảnh mẫu, còn nội dung vẽ mới theo prompt.',btn:'Tạo ảnh'},
 };
+const EXT={png:'png',jpeg:'jpg',webp:'webp'},MIME={png:'image/png',jpeg:'image/jpeg',webp:'image/webp'};
 let mode='generate',features={};
 $('key').value=store.get('imagegen_key')||'';
-$('key').onchange=()=>{store.set('imagegen_key',$('key').value.trim())};
 const hdr=()=>{const k=$('key').value.trim();return k?{'X-API-Key':k}:{}};
 function setStatus(t,err){$('status').textContent=t;$('status').className=err?'err':''}
-for(const id of ['strength','guidance','cstrength'])$(id).oninput=()=>{$(id+'Out').textContent=$(id).value};
+for(const id of ['strength','guidance','cstrength','loraStrength'])$(id).oninput=()=>{$(id+'Out').textContent=$(id).value};
 
 function setMode(m){
   mode=m;const cfg=MODES[m];
   document.querySelectorAll('.tab').forEach(t=>t.setAttribute('aria-selected',t.dataset.mode===m));
   document.querySelectorAll('[data-for]').forEach(el=>el.classList.toggle('hide',!el.dataset.for.split(' ').includes(m)));
+  if(m==='generate'&&$('size').value==='auto')$('size').value='1920x1080';
+  if(m!=='generate'&&m!=='edit'&&!$('size').dataset.touched)$('size').value='auto';
+  syncMp();
   $('steps').value=cfg.steps;$('promptLabel').textContent=cfg.label;$('go').textContent=cfg.btn;
-  $('modeHint').textContent=cfg.hint+(features[m]===false?' (Chưa cài model cho chức năng này trên server.)':'');
+  $('modeHint').textContent=cfg.hint+(features[m]===false?' (Chức năng này chưa bật trên server.)':'');
   if(cfg.sample&&!$('prompt').dataset.touched)$('prompt').value=cfg.sample;
   showThumbs();
 }
+function syncMp(){$('mpBox').classList.toggle('hide',mode==='generate'||(mode!=='edit'&&$('size').value!=='auto'))}
+$('size').onchange=()=>{$('size').dataset.touched='1';syncMp()};
 $('prompt').oninput=()=>{$('prompt').dataset.touched='1'};
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>setMode(t.dataset.mode));
 
@@ -118,21 +141,31 @@ $('image').onchange=showThumbs;$('image2').onchange=showThumbs;
 async function errText(r){let m=await r.text();try{const d=JSON.parse(m).detail;m=typeof d==='string'?d:JSON.stringify(d)}catch(e){}
   if(r.status===401)m='Sai hoặc thiếu API key';return `HTTP ${r.status}: ${m}`}
 
+function common(){
+  const o={n:+$('n').value,seed:+($('seed').value||-1),steps:+$('steps').value,format:$('format').value,wait:false};
+  if(mode!=='edit'){o.cfg=+$('cfg').value;if($('neg').value.trim())o.negative_prompt=$('neg').value.trim();
+    if($('lora').value){o.lora=$('lora').value;o.lora_strength=+$('loraStrength').value}}
+  return o;
+}
 function buildRequest(){
-  const seed=$('seed').value||'-1',steps=$('steps').value;
+  const o=common();
   if(mode==='generate'){
     const [w,h]=$('size').value.split('x').map(Number);
-    return {url:'/generate',opts:{method:'POST',headers:{...hdr(),'Content-Type':'application/json'},
-      body:JSON.stringify({prompt:$('prompt').value,width:w,height:h,steps:+steps,seed:+seed,wait:false})}};
+    Object.assign(o,{prompt:$('prompt').value,width:w,height:h,hires:$('hires').checked});
+    return {url:'/generate',opts:{method:'POST',headers:{...hdr(),'Content-Type':'application/json'},body:JSON.stringify(o)}};
   }
   if(!$('image').files[0])throw new Error('Chọn ảnh mẫu trước');
   const f=new FormData();f.append('image',$('image').files[0]);f.append('prompt',$('prompt').value);
-  f.append('steps',steps);f.append('seed',seed);f.append('megapixels',$('mp').value);f.append('wait','false');
+  for(const [k,v] of Object.entries(o))f.append(k,String(v));
+  if(mode!=='edit'&&$('size').value!=='auto'){const [w,h]=$('size').value.split('x');f.append('width',w);f.append('height',h)}
+  else f.append('megapixels',$('mp').value);
   if(mode==='img2img')f.append('strength',$('strength').value);
   if(mode==='edit'){f.append('guidance',$('guidance').value);if($('image2').files[0])f.append('image2',$('image2').files[0])}
   if(mode==='control'){f.append('mode',$('cmode').value);f.append('strength',$('cstrength').value)}
   return {url:'/'+mode,opts:{method:'POST',headers:hdr(),body:f}};
 }
+
+function b64Url(b64,fmt){const bin=atob(b64),a=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i);return URL.createObjectURL(new Blob([a],{type:MIME[fmt]}))}
 
 $('go').onclick=async()=>{
   let req;try{req=buildRequest()}catch(e){setStatus(e.message,true);return}
@@ -141,34 +174,48 @@ $('go').onclick=async()=>{
   try{
     const r=await fetch(req.url,req.opts);
     if(r.status!==202)throw new Error(await errText(r));
-    const job=await r.json();
-    let res;
+    const job=await r.json();let res;
     while(true){
-      await new Promise(ok=>setTimeout(ok,1000));
+      await new Promise(ok=>setTimeout(ok,1500));
       res=await fetch('/jobs/'+job.job_id,{headers:hdr()});
-      if(res.status===202){setStatus(`Đang tạo… ${tick()} giây`);continue}
+      if(res.status===202){const s=await res.json();
+        const q=s.queue_position>0?` · đang chờ, vị trí ${s.queue_position} trong hàng`:'';
+        setStatus(`Đang tạo… ${tick()} giây · xong ${s.images_done}/${s.seeds.length} ảnh${q}`);continue}
       if(!res.ok)throw new Error(await errText(res));
       break;
     }
-    const url=URL.createObjectURL(await res.blob());
-    const seed=res.headers.get('X-Seed'),gpu=res.headers.get('X-Elapsed-S');
-    $('result').innerHTML=`<img src="${url}" alt="Ảnh kết quả"><div class="meta">seed ${seed} · GPU ${(+gpu).toFixed(1)} s · tổng ${tick()} s · <a href="${url}" download="${mode}-${seed}.png">Tải PNG</a> · <a href="#" id="reuse">Dùng lại seed này</a></div>`;
-    $('reuse').onclick=e=>{e.preventDefault();$('seed').value=seed};
-    addHistory(url,seed);setStatus(`Xong sau ${tick()} giây`);
+    let items;
+    if((res.headers.get('Content-Type')||'').startsWith('application/json')){
+      const d=await res.json();items=d.images.map(i=>({url:b64Url(i.image_base64,i.format),seed:i.seed,w:i.width,h:i.height,fmt:i.format}));
+    }else{
+      const fmt=$('format').value;items=[{url:URL.createObjectURL(await res.blob()),seed:res.headers.get('X-Seed'),
+        w:res.headers.get('X-Image-Width'),h:res.headers.get('X-Image-Height'),fmt}];
+    }
+    $('result').className='results'+(items.length>1?' multi':'');
+    $('result').innerHTML=items.map((it,i)=>`<figure><img src="${it.url}" alt="Ảnh kết quả ${i+1}"><figcaption class="meta">seed ${it.seed} · ${it.w}×${it.h} · <a href="${it.url}" download="${mode}-${it.seed}.${EXT[it.fmt]}">Tải ${it.fmt.toUpperCase()}</a> · <a href="#" data-seed="${it.seed}">Dùng lại seed</a></figcaption></figure>`).join('');
+    $('result').querySelectorAll('a[data-seed]').forEach(a=>a.onclick=e=>{e.preventDefault();$('seed').value=a.dataset.seed;$('n').value='1'});
+    items.forEach(it=>addHistory(it.url,it.seed));setStatus(`Xong ${items.length} ảnh sau ${tick()} giây`);
   }catch(e){setStatus('Lỗi: '+e.message,true)}finally{$('go').disabled=false}
 };
 
 function addHistory(url,seed){
   $('historyCard').classList.remove('hide');
   const i=new Image();i.src=url;i.alt='seed '+seed;i.title=`${mode} · seed ${seed}`;
-  i.onclick=()=>{$('result').querySelector('img').src=url;window.scrollTo({top:0,behavior:'smooth'})};
+  i.onclick=()=>{$('result').className='results';$('result').innerHTML=`<figure><img src="${url}" alt="seed ${seed}"><figcaption class="meta">seed ${seed}</figcaption></figure>`;window.scrollTo({top:0,behavior:'smooth'})};
   $('history').prepend(i);
 }
 
+async function loadLoras(){
+  if(!$('key').value.trim())return;
+  try{const r=await fetch('/loras',{headers:hdr()});if(!r.ok)return;const d=await r.json();
+    $('lora').innerHTML='<option value="">Không dùng</option>'+d.loras.map(l=>`<option value="${l}">${l.replace(/\.safetensors$/,'')}</option>`).join('');}catch(e){}
+}
+$('key').onchange=()=>{store.set('imagegen_key',$('key').value.trim());loadLoras()};
+
 fetch('/health').then(r=>r.json()).then(d=>{
   features=d.features||{};
-  document.querySelectorAll('.tab').forEach(t=>{if(features[t.dataset.mode]===false){t.disabled=true;t.title='Chưa cài model trên server'}});
+  document.querySelectorAll('.tab').forEach(t=>{if(features[t.dataset.mode]===false){t.disabled=true;t.title='Chưa bật trên server'}});
   setMode(mode);
 }).catch(()=>setMode(mode));
-setMode(mode);
+setMode(mode);loadLoras();
 </script></body></html>
